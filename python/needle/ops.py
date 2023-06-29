@@ -80,7 +80,8 @@ class PowerScalar(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        return (out_grad * (self.scalar - 1) * node.inputs, )
+        x, = node.inputs
+        return (multiply(mul_scalar(out_grad, self.scalar), power_scalar(x, (self.scalar - 1))), )
         ### END YOUR SOLUTION
 
 
@@ -99,7 +100,7 @@ class EWiseDiv(TensorOp):
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         x, y = node.inputs
-        return (out_grad * (y ** -1), out_grad * -x * (y ** -2))
+        return (multiply(out_grad, (power_scalar(y, -1))), multiply(out_grad, multiply(-x, (power_scalar(y, -2)))))
         ### END YOUR SOLUTION
 
 
@@ -118,7 +119,7 @@ class DivScalar(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        return (out_grad * (1/self.scalar),)
+        return (mul_scalar(out_grad, (1/self.scalar)),)
         ### END YOUR SOLUTION
 
 
@@ -143,7 +144,7 @@ class Transpose(TensorOp):
         if self.axes:
             return (transpose(out_grad, self.axes), )
 
-        return transpose(out_grad, (-1, -2))
+        return (transpose(out_grad, (-1, -2)), )
         ### END YOUR SOLUTION
 
 
@@ -243,19 +244,20 @@ class Summation(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        x, = node.inputs
-        summed = summation(x, self.axes)
-        if self.axes != None and len(self.axes) == 1 and self.axes[0] == 1:
-            summed = reshape(summed, summed.shape + (1,))
-
-        reverted = broadcast_to(summed, x.shape)
-        return (reverted / summed, )
+        a = node.inputs[0].data
+        out_shape = out_grad.shape
+        input_shape = [1] * len(a.shape)
+        j = 0
+        for i in range(len(a.shape)):
+            if j < len(out_shape) and out_shape[j] == a.shape[i]:
+                input_shape[i] = a.shape[i]
+                j += 1
+        return (broadcast_to(reshape(out_grad, tuple(input_shape)), a.shape), )
         ### END YOUR SOLUTION
 
 
 def summation(a, axes=None):
     return Summation(axes)(a)
-
 
 class MatMul(TensorOp):
     def compute(self, a, b):
@@ -293,7 +295,7 @@ class Negate(TensorOp):
         ### BEGIN YOUR SOLUTION
         # x,  = node.inputs
         # return (multiply(out_grad, x / array_api.abs(x.numpy())), )
-        return (mul_scalar(out_grad, -1) , )
+        return (mul_scalar(out_grad, -1), )
         ### END YOUR SOLUTION
 
 
@@ -309,7 +311,8 @@ class Log(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        x, = node.inputs
+        return (multiply(out_grad, power_scalar(x, -1)), )
         ### END YOUR SOLUTION
 
 
@@ -325,7 +328,8 @@ class Exp(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        x, = node.inputs
+        return multiply(out_grad, exp(x)),
         ### END YOUR SOLUTION
 
 
@@ -337,12 +341,15 @@ def exp(a):
 class ReLU(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        mask = (a <= 0)
+        out = a.copy()
+        out[mask] = 0
+        return out
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        return out_grad * Tensor(node.inputs[0].realize_cached_data() > 0)
         ### END YOUR SOLUTION
 
 

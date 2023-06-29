@@ -211,6 +211,7 @@ class TensorTuple(Value):
 
     def detach(self):
         """Create a new tensor that shares the data but detaches from the graph."""
+        # return Tensor.make_const(self.realize_cached_data())
         return Tuple.make_const(self.realize_cached_data())
 
 
@@ -402,7 +403,6 @@ def compute_gradient_of_variables(output_tensor, out_grad):
         v_i = sum(node_to_output_grads_list[i])
 
         if i.is_leaf():
-            node_to_output_grads_list[i] = sum(node_to_output_grads_list[i])
             continue
 
         v_k_is = i.op.gradient(v_i, i)
@@ -416,15 +416,11 @@ def compute_gradient_of_variables(output_tensor, out_grad):
             else:
                 node_to_output_grads_list.setdefault(i.inputs[0], []).append(v_k_is[0])
 
-    input_vars = list()
-    for i in reversed(reverse_topo_order):
-        if i.is_leaf():
-            input_vars.append(i)
-
     result = list()
-    for input_var in input_vars:
-        input_var.grad = node_to_output_grads_list[input_var]
-        result.append(input_var)
+    for i in reverse_topo_order:
+        if i.is_leaf():
+            i.grad = sum(node_to_output_grads_list[i])
+            result.append(i)
 
     return result
     ### END YOUR SOLUTION

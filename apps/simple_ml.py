@@ -30,7 +30,22 @@ def parse_mnist(image_filesname, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    # Ref: https://stackoverflow.com/questions/39969045/parsing-yann-lecuns-mnist-idx-file-format
+
+    with gzip.open(f'{image_filesname}', 'rb') as f:
+        magic, size = struct.unpack(">II", f.read(8))
+        nrows, ncols = struct.unpack(">II", f.read(8))
+        x = np.frombuffer(f.read(), dtype=np.dtype(np.uint8).newbyteorder('>'))
+        x = x.reshape((size, nrows * ncols))
+        x = x.astype(np.float32)
+        x = x / 255.0
+
+    with gzip.open(f'{label_filename}','rb') as f:
+        magic, size = struct.unpack(">II", f.read(8))
+        y = np.frombuffer(f.read(), dtype=np.dtype(np.uint8).newbyteorder('>'))
+        y = y.reshape((size,)) # (Optional)
+
+    return x, y
     ### END YOUR SOLUTION
 
 
@@ -51,7 +66,56 @@ def softmax_loss(Z, y_one_hot):
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    ### ANS 1 ###
+    # print("### START ###")
+    # batch_size = Z.shape[0]
+    # batch_loss = list()
+    # for row_index, row in enumerate(Z.numpy()):
+    #     zy = row[np.argmax(y_one_hot.numpy()[row_index])]
+    #     zi = row
+    #
+    #     loss = np.log(np.sum(np.exp(zi))) - zy
+    #     batch_loss.append(loss)
+    #
+    # print("### END ###")
+    # # print(batch_size, batch_loss)
+    # result = ndl.Tensor(np.sum(batch_loss) / batch_size)
+    # return result
+    ### ANS 1 ###
+
+    ### ANS 2 ###
+    # batch_size = Z.shape[0]
+    #
+    #
+    # zy = ndl.Tensor(np.argmax(y_one_hot.numpy(), axis=1))
+    # loss = ndl.log(ndl.summation(ndl.exp(Z), axes=1)) - zy
+    #
+    # result = ndl.divide_scalar(ndl.summation(loss), batch_size)
+    # print("result:", result)
+    # return result
+    ### ANS 2 ###
+
+    ### ANS 3 ###
+    # Z = Z.numpy()
+    # batch_size = Z.shape[0]
+    # zy = np.argmax(y_one_hot.numpy(), axis=1)
+    # items = Z[np.arange(Z.shape[0]), zy]
+    # loss = np.log(np.sum(np.exp(Z), 1)) - items
+    # result = ndl.Tensor(np.sum(loss) / batch_size)
+    #
+    # return result
+    ### ANS 3 ###
+
+    ### ANS 4 ###
+    batch_size = Z.shape[0]
+    loss = ndl.log(ndl.summation(ndl.exp(Z), axes=1)) - \
+           ndl.summation(ndl.multiply(y_one_hot, Z),  axes=1)
+    result = ndl.divide_scalar(ndl.summation(loss), batch_size)
+    print("@@@result:", result)
+
+    return result
+    ### ANS 4 ###
+
     ### END YOUR SOLUTION
 
 
@@ -80,7 +144,23 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
     """
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    batch_size = X.shape[0]
+    for i in range(0, batch_size, batch):
+        X_batch = X[i : i+batch]
+        y_batch = y[i : i+batch]
+        X_batch = ndl.Tensor(X_batch)
+        #   Z1 = ndl.ops.relu( ndl.ops.matmul( X_batch , W1))
+        #   Z = ndl.ops.matmul( Z1 ,W2)
+        Z1 = ndl.relu(X_batch @ W1)
+        Z = Z1 @ W2
+        y_one_hot = np.zeros(Z.shape, dtype="float32")
+        y_one_hot[np.arange(Z.shape[0]),y_batch] = 1
+        loss = softmax_loss(Z, ndl.Tensor(y_one_hot))
+        loss.backward()
+
+        W1 = (W1 - lr * W1.grad).detach()
+        W2 = (W2 - lr * W2.grad).detach()
+    return W1, W2
     ### END YOUR SOLUTION
 
 
