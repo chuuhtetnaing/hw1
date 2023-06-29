@@ -398,7 +398,35 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    for i in reverse_topo_order:
+        v_i = sum(node_to_output_grads_list[i])
+
+        if i.is_leaf():
+            node_to_output_grads_list[i] = sum(node_to_output_grads_list[i])
+            continue
+
+        v_k_is = i.op.gradient(v_i, i)
+
+        if isinstance(v_k_is, Tensor):
+            node_to_output_grads_list.setdefault(i.inputs[0], []).append(v_k_is)
+        else:
+            if len(v_k_is) == 2:
+                node_to_output_grads_list.setdefault(i.inputs[0], []).append(v_k_is[0])
+                node_to_output_grads_list.setdefault(i.inputs[1], []).append(v_k_is[1])
+            else:
+                node_to_output_grads_list.setdefault(i.inputs[0], []).append(v_k_is[0])
+
+    input_vars = list()
+    for i in reversed(reverse_topo_order):
+        if i.is_leaf():
+            input_vars.append(i)
+
+    result = list()
+    for input_var in input_vars:
+        input_var.grad = node_to_output_grads_list[input_var]
+        result.append(input_var)
+
+    return result
     ### END YOUR SOLUTION
 
 
@@ -412,7 +440,6 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     """
     ### BEGIN YOUR SOLUTION
     result = topo_sort_dfs(node_list[0], [], [])
-    print("node_list[0]", node_list[0])
     result.extend(node_list)
     return result
     ### END YOUR SOLUTION

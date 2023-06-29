@@ -245,7 +245,7 @@ class Summation(TensorOp):
         ### BEGIN YOUR SOLUTION
         x, = node.inputs
         summed = summation(x, self.axes)
-        if len(self.axes) == 1 and self.axes[0] == 1:
+        if self.axes != None and len(self.axes) == 1 and self.axes[0] == 1:
             summed = reshape(summed, summed.shape + (1,))
 
         reverted = broadcast_to(summed, x.shape)
